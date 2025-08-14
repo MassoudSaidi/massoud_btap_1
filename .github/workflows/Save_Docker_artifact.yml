@@ -12,7 +12,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t m-btap-ml-cpu -f Docker .
+          docker build -t m-btap-ml-cpu -f Dockerfile .
 
       - name: Save Docker image as artifact
         run: |
