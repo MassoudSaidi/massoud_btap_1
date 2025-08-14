@@ -1,0 +1,10 @@
+FROM btap-ml-cpu
+
+#RUN apt update && apt install nano -y
+
+COPY src ./src
+COPY input ./input
+
+WORKDIR /home/btap_ml
+
+CMD ["/bin/bash"]
