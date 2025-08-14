@@ -7,9 +7,16 @@ jobs:
   save-and-upload:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t m-btap-ml-cpu -f Docker .
+
       - name: Save Docker image as artifact
         run: |
-          docker save -o image.tar btap-ml-cpu
+          docker save -o image.tar m-btap-ml-cpu
           mkdir -p ./artifacts
           mv image.tar ./artifacts/
       - name: Upload artifact
