@@ -14,7 +14,7 @@ tensorboard==2.8.0
 
 # ---- Upgraded common dependencies (required by FastAPI) ----
 openpyxl==3.1.5          # upgraded from 3.0.9
-pydantic==2.11.7         # upgraded from 1.9.2
+pydantic==2.10.6         # pydantic==2.11.7         # upgraded from 1.9.2
 requests==2.32.4         # upgraded from 2.28.2
 typer==0.16.0            # upgraded from 0.4.1
 
@@ -46,7 +46,7 @@ mdurl==0.1.2
 orjson==3.11.1
 pyarrow==7.0.0           # originally in ML list
 pyasn1==0.6.1
-pydantic-core==2.33.2
+pydantic-core==2.27.1  # matching core version for 2.10.6    pydantic-core==2.33.2
 pydantic-settings==2.10.1
 pygments==2.19.2
 python-dateutil==2.9.0.post0
