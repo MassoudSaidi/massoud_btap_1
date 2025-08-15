@@ -42,7 +42,8 @@ class AppConfig(BaseModel):
     TRAINING_BUCKET_NAME: str = 'model_training'
     # # URL where weather files are stored
     # WEATHER_DATA_STORE: AnyHttpUrl = 'https://raw.githubusercontent.com/NREL/openstudio-standards/nrcan/data/weather/'
-    WEATHER_DATA_STORE: AnyHttpUrl = 'https://raw.githubusercontent.com/canmet-energy/btap_weather/main/historic'
+    # Massoud WEATHER_DATA_STORE: AnyHttpUrl = 'https://raw.githubusercontent.com/canmet-energy/btap_weather/main/historic'
+    WEATHER_DATA_STORE: AnyHttpUrl = 'https://raw.githubusercontent.com/MassoudSaidi/btap-weather/main'
     # WEATHER_DATA_STORE: dict = {
     #     "historic": "https://github.com/canmet-energy/btap_weather/tree/main/historic",
     #     "future": "https://github.com/canmet-energy/btap_weather/tree/main/future",

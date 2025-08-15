@@ -24,3 +24,12 @@ jobs:
         with:
           name: docker-image-mas-btap-1
           path: ./artifacts/image.tar
+
+      # Upload to a GitHub Release
+      - name: Upload to release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: public-download
+          files: image-file.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          

@@ -105,6 +105,51 @@ def main(config_file: str = typer.Argument(..., help="Location of the .yml confi
         end_date: The end date to specify the end of which weather data is attached to the building data. Expects the input to be in the form Month_number-Day_number.
         selected_model_type: Type of model selected. can either be 'mlp' for Multilayer Perceptron or 'rf' for Random Forest
     """
+    run_predictions(
+        config_file,
+        energy_model_file,
+        energy_ohe_file,
+        energy_cleaned_columns_file,
+        energy_scaler_X_file,
+        energy_scaler_y_file,
+        energy_selected_features_file,
+        costing_model_file,
+        costing_ohe_file,
+        costing_cleaned_columns_file,
+        costing_scaler_X_file,
+        costing_scaler_y_file,
+        costing_selected_features_file,
+        building_params_folder,
+        start_date,
+        end_date,
+        selected_model_type
+    )    
+
+
+
+def run_predictions(
+    config_file: str,
+    energy_model_file: str = "",
+    energy_ohe_file: str = "",
+    energy_cleaned_columns_file: str = "",
+    energy_scaler_X_file: str = "",
+    energy_scaler_y_file: str = "",
+    energy_selected_features_file: str = "",
+    costing_model_file: str = "",
+    costing_ohe_file: str = "",
+    costing_cleaned_columns_file: str = "",
+    costing_scaler_X_file: str = "",
+    costing_scaler_y_file: str = "",
+    costing_selected_features_file: str = "",
+    building_params_folder: str = "",
+    start_date: str = "",
+    end_date: str = "",
+    selected_model_type: str = ""
+) -> None:
+    """
+    Core processing function that works in both CLI and FastAPI.
+    Put all your original main() code here.
+    """
     start_time = time.time()
 
     settings = config.Settings()
@@ -290,7 +335,7 @@ def main(config_file: str = typer.Argument(..., help="Location of the .yml confi
 
     print(time_taken)
 
-    return
+    return        
 
 if __name__ == '__main__':
     # Load settings from the environment

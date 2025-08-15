@@ -16,6 +16,7 @@ WORKDIR /home/btap_ml
 
 COPY requirements.txt ./
 COPY src ./src
+COPY input ./input
 
 RUN pip install setuptools==65.5.1 packaging==21.3
 RUN pip install -r requirements.txt
