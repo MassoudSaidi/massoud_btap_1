@@ -20,7 +20,7 @@ typer==0.16.0            # upgraded from 0.4.1
 
 # ---- Additional FastAPI-only dependencies ----
 annotated-types==0.7.0
-anyio==4.10.0
+anyio==4.5.2        # anyio==4.10.0
 boto3==1.40.6
 botocore==1.40.6
 certifi==2025.8.3
