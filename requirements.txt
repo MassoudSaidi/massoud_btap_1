@@ -21,8 +21,8 @@ typer==0.16.0            # upgraded from 0.4.1
 # ---- Additional FastAPI-only dependencies ----
 annotated-types==0.7.0
 anyio==4.5.2        # anyio==4.10.0
-boto3==1.40.11      # boto3==1.40.6
-botocore==1.40.11    # botocore==1.40.6
+boto3==1.37.38      # boto3==1.40.6
+botocore==1.37.38    # botocore==1.40.6
 certifi==2025.8.3
 charset-normalizer==3.4.3
 click==8.2.1
