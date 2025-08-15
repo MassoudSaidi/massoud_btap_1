@@ -47,7 +47,7 @@ orjson==3.10.15
 pyarrow==7.0.0           # originally in ML list
 pyasn1==0.6.1
 pydantic-core==2.27.1  # matching core version for 2.10.6    pydantic-core==2.33.2
-pydantic-settings==2.10.1
+pydantic-settings==2.8.1
 pygments==2.19.2
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
