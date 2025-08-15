@@ -43,7 +43,7 @@ jmespath==1.0.1
 markdown-it-py==3.0.0
 markupsafe==2.1.5   # markupsafe==3.0.2
 mdurl==0.1.2
-orjson==3.11.1
+orjson==3.10.15
 pyarrow==7.0.0           # originally in ML list
 pyasn1==0.6.1
 pydantic-core==2.27.1  # matching core version for 2.10.6    pydantic-core==2.33.2
