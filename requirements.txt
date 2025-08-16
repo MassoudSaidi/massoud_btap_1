@@ -25,7 +25,7 @@ requests==2.28.2
 
 # --- Additional FastAPI-only dependencies (Python 3.9 compatible) ---
 # annotated-types==0.7.0
-anyio==4.5.2
+# anyio==4.5.2
 async-timeout==5.0.1
 boto3==1.37.38
 botocore==1.37.38
