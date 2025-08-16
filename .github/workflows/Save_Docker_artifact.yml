@@ -25,6 +25,13 @@ jobs:
           name: docker-image-mas-btap-1
           path: ./artifacts/image.tar
 
+      - name: Ensure rolling tag
+        run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git tag -f public-download
+          git push -f origin public-download
+
       # Upload to a GitHub Release
       - name: Upload to release
         uses: softprops/action-gh-release@v1
