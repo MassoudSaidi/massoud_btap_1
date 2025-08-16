@@ -30,6 +30,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: public-download
-          files: image.tar
+          files: ./artifacts/image.tar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
