@@ -3,9 +3,9 @@ import base64
 import requests
 import boto3
 from fastapi import APIRouter, Form, HTTPException
-from config import settings
+from ..api_config import settings
 from fastapi.responses import HTMLResponse, RedirectResponse
-from auth.cognito import validate_token
+from ..auth.cognito import validate_token
 
 router = APIRouter()
 

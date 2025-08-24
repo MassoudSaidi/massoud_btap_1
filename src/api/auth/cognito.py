@@ -4,7 +4,7 @@ from jose import jwt, jwk
 from jose.utils import base64url_decode
 from fastapi import HTTPException, status
 
-from config import settings
+from ..api_config import settings
 
 
 

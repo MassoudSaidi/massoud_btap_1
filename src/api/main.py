@@ -20,50 +20,39 @@ import os
 import redis.asyncio as redis
 import logging
 import boto3
-from config import settings
+from .api_config import settings
 from typing import Optional, Dict, Any, List
-from routes import auth, tests, maintenance
-from auth.cognito import get_cognito_login_url
-from auth.dependency_functions import get_current_user, get_current_token, get_api_user
-from redis_client import redis_client
+from .routes import auth, tests, maintenance, surrogate_model
+from .auth.cognito import get_cognito_login_url
+from .auth.dependency_functions import get_current_user, get_current_token, get_api_user
+# from .redis_client import redis_client
+from .redis_client import init_redis, close_redis
+import os
+
+BASE_DIR = os.path.dirname(__file__)
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-
-# Environment variables (from ECS Task Definition)
-# REDIS_HOST = os.getenv("REDIS_ENDPOINT", "localhost")
-# REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-
-# REDIS_HOST = settings.REDIS_ENDPOINT
-# REDIS_PORT = settings.REDIS_PORT
-
-# # Define redis client globally
-# redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+redis_client = None  # this will hold the actual client
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    logger.info("Connecting to Redis...")
     try:
-        logger.info("Connecting to Redis...")
-        await redis_client.ping()
+        app.state.redis_client = await init_redis()
         logger.info("Successfully connected to Redis!")
     except Exception as e:
-        logger.error(f"Redis connection error: {e}")
+        logger.warning(f"Redis not available, continuing without it: {e}")
+        app.state.redis_client = None
 
-    yield  # <-- App runs here
+    yield  # <-- app runs here
 
     # Shutdown
-    # await redis_client.close()
-    # await redis_client.connection_pool.disconnect()
-    try:
+    if app.state.redis_client:
         logger.info("Closing Redis connection...")
-        await redis_client.close()
-        logger.info("Redis connection closed.")
-    except Exception as e:
-        logger.error(f"Error while closing Redis: {e}")    
+        await close_redis(app.state.redis_client)
 
 # app = FastAPI(lifespan=lifespan)
 app = FastAPI(
@@ -77,13 +66,14 @@ app = FastAPI(
 )
 
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="static")
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "static"))
 
 # Register routers
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(tests.router, prefix="/tests", tags=["Test"])
 app.include_router(maintenance.router, prefix="/maintenance", tags=["Redis Maintenance"])
+app.include_router(surrogate_model.router, prefix="/surrogate_model", tags=["Surrogate Model"])
 
 
 
@@ -133,12 +123,12 @@ async def home(request: Request):
 # Root endpoint
 @app.get("/entry")
 async def root():
-    return PlainTextResponse("Welcome to the application (v1.2.0). Try the /app or /health endpoints.")
+    return PlainTextResponse("Welcome to the application (v4.0.1). Try the /app or /health endpoints.")
 
 @app.get("/profile", response_class=HTMLResponse, include_in_schema=False)
-async def home(request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user)):
+async def profile(request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user)):
     """
-    Displays the home page.
+    Displays the profile page.
     """
     context = {
     "request": request,

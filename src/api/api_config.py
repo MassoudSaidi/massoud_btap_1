@@ -1,7 +1,7 @@
-# config.py
+# api_config.py
 import os
-# from pydantic import BaseSettings
-from pydantic_settings import BaseSettings
+from typing import Optional
+from pydantic import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -12,9 +12,9 @@ class Settings(BaseSettings):
     COGNITO_APP_CLIENT_SECRET: str
     COGNITO_DOMAIN: str
     APP_BASE_URL: str
-    REDIS_ENDPOINT: str | None = None
-    REDIS_PORT: int | None = None
-    VERSION_STRING:str
+    REDIS_ENDPOINT: str
+    REDIS_PORT: int
+    VERSION_STRING: str = ""
 
     @property
     def COGNITO_ISSUER(self) -> str:
@@ -37,11 +37,12 @@ class Settings(BaseSettings):
         return f"{self.COGNITO_ISSUER}/.well-known/jwks.json"
 
     @property
-    def VERSION_STRING(self) -> str:
-        return f"{self.COGNITO_ISSUER}/.well-known/jwks.json"  
+    def VERSION_STRING_PROP(self) -> str:
+        # Renamed property to avoid clash with field VERSION_STRING
+        return f"{self.COGNITO_ISSUER}/.well-known/jwks.json"
 
     class Config:
-        env_file = ".env"  # Will be used automatically in local dev
+        env_file = "./api/.env"  # Will be used automatically in local dev
 
 
 # Instantiate settings

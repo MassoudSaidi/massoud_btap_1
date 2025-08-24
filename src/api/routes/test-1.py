@@ -29,98 +29,7 @@ def get_redis(request: Request):
     """Dependency that provides the Redis client."""
     return request.app.state.redis_client
 
-@router.get("/test")
-def test_endpoint():
-    return {"message": "Test OK"}
 
-@router.get("/protected", response_model=dict)
-async def protected_route(token_info: TokenInfo = Depends(get_current_token)):
-    """
-    Protected endpoint that supports both OAuth2 and Bearer token authentication.
-    
-    ## Authentication Methods:
-    
-    ### Method 1: Bearer Token
-    - Click the "Authorize" button (lock icon)
-    - Enter: `Bearer your_access_token_here`
-    
-    ### Method 2: OAuth2 Flow
-    - Click the "Authorize" button
-    - Use the OAuth2 Authorization Code flow
-    
-    ## Response:
-    - Returns success message and token information
-    """
-    return {
-        "message": "You have access!",
-        "auth_method": token_info.auth_method,
-        "token_type": token_info.token_type,
-        "token_preview": f"{token_info.token[:20]}..." if len(token_info.token) > 20 else token_info.token
-    }    
-
-
-@router.post("/process-excel/")
-async def process_excel(file: UploadFile = File(...)):
-    # Read the uploaded file into memory
-    contents = await file.read()
-    input_stream = BytesIO(contents)
-
-    # Load and process
-    wb = openpyxl.load_workbook(input_stream)
-    ws = wb.active
-    ws["A1"] = "Processed by API"
-
-    # Save to in-memory buffer
-    output_stream = BytesIO()
-    wb.save(output_stream)
-    output_stream.seek(0)  # Reset cursor to start
-
-    # Return file directly without saving
-    return StreamingResponse(
-        output_stream,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=processed.xlsx"}
-    )    
-
-    
-@router.get("/logUserOut", summary="Logs the user out by clearing the session cookie.")
-async def logout(response: Response):
-    """
-    Logs out the current user by clearing authentication tokens.
-    Note: This clears local tokens. For complete Cognito logout, 
-    redirect to the Cognito logout endpoint.
-    """
-    # Clear any local storage of tokens
-    response.delete_cookie("access_token")
-    response.delete_cookie("refresh_token")
-    response.delete_cookie("session_token")    
-
-@router.get("/api/v1/user/groups", response_model=List[str], summary="Get user's Cognito groups")
-async def get_user_groups(user: dict = Depends(require_user)):
-    """
-    Returns a list of Cognito groups for the currently authenticated user.
-    """
-    groups = user.get("cognito:groups", [])
-    return groups
-
-@router.get("/api/v1/user/groups2", response_model=List[str], summary="Get user's Cognito groups")
-async def get_user_groups(token_info: TokenInfo = Depends(get_current_token)):
-    """
-    Returns a list of Cognito groups for the authenticated user.
-    This endpoint accepts a Bearer token in the Authorization header.
-    """
-    # The get_current_token dependency gives us the raw token.
-    # We now need to validate it to get the user claims.
-    try:
-        user_claims = validate_token(token_info.token)
-    except HTTPException as e:
-        # Re-raise the exception from validate_token if validation fails
-        raise e
-
-    # Once the token is validated, user_claims will contain the decoded token.
-    # The rest of the logic is the same as before.
-    groups = user_claims.get("cognito:groups", [])
-    return groups       
 
 
 # Redis connection check
@@ -155,16 +64,16 @@ async def ping_redis(redis = Depends(get_redis)):
 # --- Layer 1: Request Rate Limit Setup (MANUAL) ---
 REQUEST_LIMIT_CONFIG = {
     # limit, window_in_seconds
-    "Free-Tier": (1, 300),        # 1 request per 10 minutes (600 seconds)
-    "Researcher-Tier": (1, 120),     # 
-    "Developer-Tier": (1000, 86400),  # 1000 requests per day
+    "free-tier": (2, 600),     # 1 request per 10 minutes (600 seconds)
+    "premium-tier": (60, 60),    # 60 requests per minute
+    "admin-tier": (1000, 86400), # 1000 requests per day
 }
 
 # --- Layer 2: Concurrency Limit Setup (The Gatekeeper) ---
 CONCURRENCY_QUOTAS = {
-    "Free-Tier": 1,
-    "Researcher-Tier": 1,
-    "Developer-Tier": 1,
+    "free-tier": 2,
+    "premium-tier": 5,
+    "admin-tier": 20,
 }
 
 # --- Task Wrapper for Safe Decrement ---
@@ -246,7 +155,7 @@ async def run_task_simple(
         logger.info(f"Concurrency check passed for user {x_user_id}. Starting task {current_count}/{max_concurrency}.")
         # background_tasks.add_task(task_wrapper, user_id=x_user_id, role=x_user_role, redis_client=redis_client)
         await task_wrapper(user_id=x_user_id, role=x_user_role, redis_client=redis_client)
-        return {"status": "Task accepted and Finished."}
+        return {"status": "Task accepted and started."}
         
     except Exception as e:
         logger.error(f"An unexpected error occurred after incrementing concurrency counter: {e}. Reverting.")
@@ -317,7 +226,7 @@ async def run_task(
         logger.info(f"Concurrency check passed for user {x_user_id}. Starting task {current_count}/{max_concurrency}.")
         # background_tasks.add_task(task_wrapper, user_id=x_user_id, role=x_user_role, redis_client=redis_client)
         await task_wrapper(user_id=x_user_id, role=x_user_role, redis_client=redis_client)
-        return {"status": "Task accepted and Finished."}
+        return {"status": "Task accepted and started."}
         
     except Exception as e:
         logger.error(f"An unexpected error occurred after incrementing concurrency counter: {e}. Reverting.")

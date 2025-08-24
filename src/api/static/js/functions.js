@@ -1,25 +1,4 @@
-async function fetchProtectedData_old() {
-  try {
-    const res = await fetch("/api/v1/data", {
-      method: "GET",
-      credentials: "include" // Required for cookies
-    });
 
-    if (res.status === 200) {
-      const data = await res.json();
-      console.log("Protected data:", data);
-      alert("Data: " + JSON.stringify(data, null, 2));
-    } else if (res.status === 401) {
-      console.log("Not authenticated. Redirecting to login...");
-    } else {
-      console.error("Unexpected error", res.status);
-      alert("An error occurred: " + res.status);
-    }
-  } catch (err) {
-    console.error("Fetch error:", err);
-    alert("Network or server error");
-  }
-}
 
 async function fetchProtectedData() {
   try {

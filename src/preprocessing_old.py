@@ -22,79 +22,11 @@ import plot as pl
 import prepare_weather
 from models.preprocessing_model import PreprocessingModel
 
-from typing import List
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def process_costing_building_files(elec_df, gas_df, clean_dataframe=True, cleaned_columns_list=[]):
-    """
-    Used to read the building simulation I/O file in preparation for costing
-    predictions/training
 
-    Args:
-        elec_df: replaced pd.read_excel(path_elec)
-        originally was path_elec: file path where data is to be read. This is a mandatory parameter and in the case where only one simulation I/O file is provided, the path to this file should be indicated here.
-        gas_df: replaced pd.read_excel(path_gas)
-        originally was path_gas: This would be path to the gas output file. This is optional, if there is no gas output file to the loaded, then a value of path_gas ='' should be used
-        clean_dataframe: True if the loaded data should be cleaned, False if cleaning should be skipped
-        cleaned_columns_list: A list of columns to filter if skipping the cleaning (to handle nulls in different columns appropriately)
-
-    Returns:
-        btap_df: Dataframe containing the clean building parameters file.
-        costing_df: Dataframe containing the costing output values.
-    """
-    ### btap_df = pd.read_excel(path_elec)
-    btap_df = elec_df
-    ### if path_gas:
-    if gas_df:
-        #### btap_df = pd.concat([btap_df, pd.read_excel(path_gas)], ignore_index=True)
-        btap_df = pd.concat([btap_df, gas_df], ignore_index=True)
-
-    # List of all costing values
-    costing_value_names = ['cost_equipment_total_cost_per_m_sq',
-                           'cost_equipment_envelope_total_cost_per_m_sq',
-                           'cost_equipment_heating_and_cooling_total_cost_per_m_sq',
-                           'cost_equipment_lighting_total_cost_per_m_sq',
-                           'cost_equipment_ventilation_total_cost_per_m_sq',
-                           'cost_equipment_renewables_total_cost_per_m_sq',
-                           'cost_equipment_shw_total_cost_per_m_sq']
-
-    # Since :srr_set contains string and float values, we replace it with
-    # TODO: Remove when the inputs handle default values
-    btap_df[':srr_set'] = btap_df['bldg_srr'] / 100
-
-    # If a list of columns to use is provided, set the df to use these + the costing output names
-    # Since the code currently mixes the use of a semicolon for datapoint_id, this is handled
-    if len(cleaned_columns_list) > 0:
-        btap_df = btap_df[[elem for elem in cleaned_columns_list if elem != 'datapoint_id'] + costing_value_names + [':datapoint_id']]
-        btap_df = btap_df.dropna()
-        btap_df.reset_index(drop=True, inplace=True)
-
-    # If specified, clean the data using the generic cleaning call
-    if clean_dataframe:
-        btap_df = clean_data(btap_df, costing_value_names)
-
-    # Extract the costing columns
-    costing_df = btap_df[costing_value_names]
-    btap_df['datapoint_id'] = btap_df[':datapoint_id']
-    costing_df['datapoint_id'] = btap_df[':datapoint_id']
-    # Dynamic list of columns to remove
-    output_drop_list = costing_value_names
-    # Populate the drop list from the file containing all columns to ignore
-    costing_filepath = config.Settings().APP_CONFIG.COSTING_COLUMNS_FILE
-    # Assuming that the user must be running from the src or home directory, ensure that either
-    # will be able to read the column exceptions file
-    if not os.path.isfile(costing_filepath):
-        costing_filepath = config.Settings().APP_CONFIG.DOCKER_SRC_PATH + costing_filepath
-    with open(costing_filepath, 'r', encoding='UTF-8') as cols:
-        output_drop_list += cols.read().split("\n")
-    # Drop the specified columns
-    btap_df = btap_df.drop(output_drop_list, axis=1, errors='ignore')
-    # Columns with nan values are removed to ensure compatability with each potential feature selection algorithm
-    return btap_df, costing_df
-
-def process_costing_building_files_old(path_elec, path_gas, clean_dataframe=True, cleaned_columns_list=[]):
+def process_costing_building_files(path_elec, path_gas, clean_dataframe=True, cleaned_columns_list=[]):
     """
     Used to read the building simulation I/O file in preparation for costing
     predictions/training
@@ -216,78 +148,7 @@ def clean_data(df, additional_exemptions=[]) -> pd.DataFrame:
             df.drop(col, inplace=True, axis=1)
     return df
 
-def process_building_files(elec_df, gas_df, clean_dataframe=True):
-    """
-    Used to read the building simulation I/O file
-
-    Args:
-        elec_df: replaced pd.read_excel(path_elec)
-        originally was path_elec: file path where data is to be read. This is a mandatory parameter and in the case where only one simulation I/O file is provided, the path to this file should be indicated here.
-        gas_df: replaced pd.read_excel(path_gas)
-        originally was path_gas: This would be path to the gas output file. This is optional, if there is no gas output file to the loaded, then a value of path_gas ='' should be used
-        clean_dataframe: True if the loaded data should be cleaned, False if cleaning should be skipped
-
-    Returns:
-        btap_df: Dataframe containing the clean building parameters file.
-        floor_sq: the square foot of the building
-        epw_keys: Dictionary containing all unique weather keys.
-    """
-    ### btap_df = pd.read_excel(path_elec)
-    btap_df = elec_df
-    ### if path_gas:
-    if gas_df:
-        btap_df = pd.concat([btap_df, gas_df], ignore_index=True)
-    # Building meters squared
-    floor_sq = btap_df['bldg_conditioned_floor_area_m_sq'].unique()
-    #print(btap_df['bldg_conditioned_floor_area_m_sq'].unique())
-    # Unique weather keys
-    epw_keys = btap_df[':epw_file'].unique()
-    # Dynamic list of columns to remove
-    output_drop_list = ['Unnamed: 0', ':template']
-    # List of columns to keep despite being ruled to be removed
-    output_drop_list_exceptions = ['energy_eui_additional_fuel_gj_per_m_sq',
-                                   'energy_eui_electricity_gj_per_m_sq',
-                                   'energy_eui_natural_gas_gj_per_m_sq',
-                                   'net_site_eui_gj_per_m_sq',
-                                   ':building_type',
-                                   ':epw_file',
-                                   'bldg_conditioned_floor_area_m_sq',
-                                   ':erv_package'
-                                  ]
-
-    # Since :srr_set contains string and float values, we replace it with
-    # TODO: Remove when the inputs handle default values
-    btap_df[':srr_set'] = btap_df['bldg_srr'] / 100
-
-    # Remove columns without a ':' and which are not exceptions
-    for col in btap_df.columns:
-        if ((':' not in col) and (col not in output_drop_list_exceptions)):# or is_df_col_mixed_type(btap_df[col]):
-            output_drop_list.append(col)
-    btap_df = btap_df.drop(output_drop_list, axis=1)
-    # If specified, clean the data using the generic cleaning call
-    if clean_dataframe:
-        btap_df = clean_data(btap_df)
-    # Define a Total energy column
-    if 'net_site_eui_gj_per_m_sq' in btap_df:
-        btap_df['Total Energy'] = btap_df[['net_site_eui_gj_per_m_sq']].sum(axis=1)
-
-    drop_list = ['energy_eui_additional_fuel_gj_per_m_sq',
-                 'energy_eui_electricity_gj_per_m_sq',
-                 'energy_eui_natural_gas_gj_per_m_sq',
-                 'net_site_eui_gj_per_m_sq',
-                 ':analysis_id',
-                 ':analysis_name',
-                 ':os_standards_branch',
-                 ':btap_costing_branch',
-                 ':job_id']
-    # Drop any remaining fields which exist, ignoring raised errors
-    btap_df = btap_df.drop(drop_list, axis=1, errors='ignore')
-
-    return btap_df, floor_sq, epw_keys
-
-
-
-def process_building_files_old(path_elec, path_gas, clean_dataframe=True):
+def process_building_files(path_elec, path_gas, clean_dataframe=True):
     """
     Used to read the building simulation I/O file
 
@@ -352,119 +213,7 @@ def process_building_files_old(path_elec, path_gas, clean_dataframe=True):
 
     return btap_df, floor_sq, epw_keys
 
-def _process_buildings_data(building_data_dict: dict, start_date: str, end_date: str, for_energy: bool = True):
-    """
-    Core processing logic for a dictionary of building dataframes.
-    This function is agnostic to the source of the data (file or in-memory).
-    """
-    TEMP_YEAR = '2022-'
-    start_date = TEMP_YEAR + start_date
-    end_date = TEMP_YEAR + end_date
-    
-    buildings_df = None
-    epw_keys = {}
-
-    # The main loop now iterates over the dictionary items
-    for filename, building_df_initial in building_data_dict.items():
-        # The processing logic from your original function's loop goes here.
-        # We assume the initial DataFrames are already loaded.
-        # We need to re-run the specific processing that was inside the original loop.
-        
-        # Process the single building file
-        if for_energy:
-            # building_df, floor_sq, weather_keys = process_building_files(directory + '/' + filename, False, False)
-            building_df, floor_sq, weather_keys = process_building_files(building_df_initial, False, False)
-            # Add the weather keys to the set of unique weather keys
-            for weather_key in weather_keys:
-                epw_keys[weather_key] = True
-            # Add a column to track the floor_sq values as needed for the specific file
-            building_df["floor_sq"] = floor_sq[0]
-        else:
-            # building_df, _ = process_costing_building_files(directory + '/' + filename, False, False)
-            building_df, _ = process_costing_building_files(building_df_initial, False, False)
-        # Update the received outputs include a custom identifier column of the form '<filename>/<row_index>'
-        building_df["Prediction Identifier"] = filename + '/' + building_df.index.astype(str)
-
-        # Only create copied rows for the buildings if specified
-        if for_energy:
-            # Duplicate each row for every day between the specified start and end dates (ignoring the year)
-            # Holds a set of dataframes which each have the specified date range for a specific row
-            # Uses this approach since the dictionary must be edited before converted back into a dataframe
-            date_dfs = []
-            # For each row, create a dataframe for every day within the specified start and end dates
-            for _, row in building_df.iterrows():
-                # Convert the row into a dictionary to reconstruct a dataframe from
-                dict_vals = row.to_dict()
-                # Define a series of days for each day in the specified range (in the form Month_numberDay_number)          
-                dict_vals["date_int"] = pd.Series(pd.date_range(start_date, end_date).strftime("%m%d")).astype("int32")
-                # Track the updated dataframe
-                date_dfs.append(pd.DataFrame(dict_vals))
-            # Combine all dataframes together to achieve a dataframe with each original row now containing an additional row
-            # with each month and day within the specified range
-            building_df = pd.concat(date_dfs)
-
-        # Set/merge the output with the other processed building data
-        if buildings_df is not None:
-            buildings_df = pd.concat([buildings_df, building_df], ignore_index=True)
-        else:
-            buildings_df = building_df
-            
-    return buildings_df, epw_keys
-
-
-
-def process_building_files_batch(
-    directory: str, 
-    start_date: str, 
-    end_date: str, 
-    for_energy: bool = True,    
-    building_data_dict: dict = None
-):
-    """
-    Given a directory of .xlsx files OR a dictionary of dataframes, process and 
-    clean them into one dataframe.
-
-    Args:
-        start_date: Starting date of the timespan (MM-DD).
-        end_date: Ending date of the timespan (MM-DD).
-        for_energy: If true, adjust for date span, otherwise load normally.
-        directory: Directory containing .xlsx files. Use this OR building_data_dict.
-        building_data_dict: Dict of {'filename': pd.DataFrame}. Use this OR directory.
-
-    Returns:
-        buildings_df: Dataframe containing the clean building parameters.
-        epw_keys: Dictionary containing all unique weather keys.
-    """
-    # --- Input Validation ---
-    if not (directory is None) ^ (building_data_dict is None):
-        raise ValueError("You must provide either 'directory' or 'building_data_dict', but not both.")
-
-    # --- Data Loading ---
-    if directory:
-        # If a directory is provided, load files into the dictionary format
-        loaded_data = {}
-        for filename in os.listdir(directory):
-            if filename.endswith(".xlsx"):
-                # Here, you would load the raw dataframe. The specific processing
-                # has been moved to the _process_buildings_data function.
-                # Note: The original `process_building_files` and `process_costing_building_files`
-                # seemed to do more than just load. You'd load the raw data first.
-                file_path = os.path.join(directory, filename)
-                df = pd.read_excel(file_path) # Or however you load the raw data
-                loaded_data[filename] = df
-        
-        # Assign the loaded data to the variable our processor expects
-        data_to_process = loaded_data
-    else:
-        # If the dictionary is provided directly, just use it
-        data_to_process = building_data_dict
-
-    # --- Data Processing ---
-    # Call the core function with the prepared data
-    return _process_buildings_data(data_to_process, start_date, end_date, for_energy)
-
-
-def process_building_files_batch_old(directory: str, start_date: str, end_date: str, for_energy: bool=True):
+def process_building_files_batch(directory: str, start_date: str, end_date: str, for_energy: bool=True):
     """
     Given a directory of .xlsx building files, process and clean each file, combining
     them into one dataframe with entries for every day within a provided timespan
@@ -815,29 +564,44 @@ def categorical_encode(x_train, x_test, x_validate, output_path, ohe_file=''):
         joblib.dump(ct, output_path + "/" + config.Settings().APP_CONFIG.OHE_FILENAME)
     return x_train_oh, x_test_oh, x_val_oh, all_features
 
-
-def preprocess_data(
-    config_file: str = "",
-    process_type: str = "",
-    hourly_energy_electric_file: str = "",
-    building_params_electric_file: str = "",
-    val_hourly_energy_file: str = "",
-    val_building_params_file: str = "",
-    hourly_energy_gas_file: str = "",
-    building_params_gas_file: str = "",
-    output_path: str = "",
-    preprocess_only_for_predictions: bool = False,
-    random_seed: int = 42,
-    building_params_folder: str = "",
-    start_date: str = "1-1",
-    end_date: str = "12-31",
-    ohe_file: str = "",
-    cleaned_columns_file: str = "",
-    api_mode: bool = False,   # optional set true when calling from API
-    building_data_dict: dict = None # optional pass dictionary of uploaded Excel dataframes
-):
+def main(config_file: str = typer.Argument(..., help="Location of the .yml config file (default name is input_config.yml)."),
+         process_type: str = typer.Argument(..., help="Either 'energy' or 'costing' to specify the operations to be performed."),
+         hourly_energy_electric_file: str = typer.Option("", help="Location and name of a electricity energy file to be used if the config file is not used."),
+         building_params_electric_file: str = typer.Option("", help="Location and name of a electricity building parameters file to be used if the config file is not used."),
+         val_hourly_energy_file: str = typer.Option("", help="Location and name of an energy validation file to be used if the config file is not used."),
+         val_building_params_file: str = typer.Option("", help="Location and name of a building parameters validation file to be used if the config file is not used."),
+         hourly_energy_gas_file: str = typer.Option("", help="Location and name of a gas energy file to be used if the config file is not used."),
+         building_params_gas_file: str = typer.Option("", help="Location and name of a gas building parameters file to be used if the config file is not used."),
+         output_path: str = typer.Option("", help="The output path to be used. Note that this value should be empty unless this file is called from a pipeline."),
+         preprocess_only_for_predictions: bool = typer.Option(False, help="True if the data to be preprocessed is to be used for prediction, not for training."),
+         random_seed: int = typer.Option(42, help="The random seed to be used when splitting the data."),
+         building_params_folder: str = typer.Option("", help="The folder location containing all building parameter files which will have predictions made on by the provided model. Only used preprocess_only_for_predictions is True."),
+         start_date: str = typer.Option("1-1", help="The start date to specify the start of which weather data is attached to the building data. Expects the input to be in the form Month_number-Day_number. Only used preprocess_only_for_predictions is True."),
+         end_date: str = typer.Option("12-31", help="The end date to specify the end of which weather data is attached to the building data. Expects the input to be in the form Month_number-Day_number. Only used preprocess_only_for_predictions is True."),
+         ohe_file: str = typer.Option("", help="Location and name of a ohe.pkl OneHotEncoder file which was generated in the root of a training output folder. To be used when generating a dataset to obtain predictions for."),
+         cleaned_columns_file: str = typer.Option("", help="Location and name of a cleaned_columns.json file which was generated in the root of a training output folder. To be used when generating a dataset to obtain predictions for."),
+        ):
     """
-    Core logic to encode categorical variables and preprocess data.
+    Used to encode the categorical variables contained in the x_train, x_test and x_validate
+    Note that the encoded data return creates additional columns equivalent to the unique categorical values in the each categorical column.
+
+    Args:
+        config_file: Location of the .yml config file (default name is input_config.yml).
+        process_type: Either 'energy' or 'costing' to specify the operations to be performed.
+        hourly_energy_electric_file: Location and name of a electricity energy file to be used if the config file is not used.
+        building_params_electric_file: Location and name of a electricity building parameters file to be used if the config file is not used.
+        val_hourly_energy_file: Location and name of an energy validation file to be used if the config file is not used.
+        val_building_params_file: Location and name of a building parameters validation file to be used if the config file is not used.
+        hourly_energy_gas_file: Location and name of a gas energy file to be used if the config file is not used.
+        building_params_gas_file: Location and name of a gas building parameters file to be used if the config file is not used.
+        output_path: Where output data should be placed. Note that this value should be empty unless this file is called from a pipeline.
+        preprocess_only_for_predictions: True if the data to be preprocessed is to be used for prediction, not for training.
+        random_seed: The random seed to be used when splitting the data.
+        building_params_folder: The folder location containing all building parameter files which will have predictions made on by the provided model. Only used preprocess_only_for_predictions is True.
+        start_date: The start date to specify the start of which weather data is attached to the building data. Expects the input to be in the form Month_number-Day_number. Only used preprocess_only_for_predictions is True.
+        end_date: The end date to specify the end of which weather data is attached to the building data. Expects the input to be in the form Month_number-Day_number. Only used preprocess_only_for_predictions is True.
+        ohe_file: Location and name of a ohe.pkl OneHotEncoder file which was generated in the root of a training output folder. To be used when generating a dataset to obtain predictions for.
+        cleaned_columns_file: Location and name of a cleaned_columns.json file which was generated in the root of a training output folder. To be used when generating a dataset to obtain predictions for.
     """
     logger.info("Beginning the building, energy, and weather preprocessing steps.")
     DOCKER_INPUT_PATH = config.Settings().APP_CONFIG.DOCKER_INPUT_PATH
@@ -888,11 +652,7 @@ def preprocess_data(
     # skipping the preprocessing steps used for training
     if input_model.preprocess_only_for_predictions:
         span_dates = process_type.lower() == config.Settings().APP_CONFIG.ENERGY
-        ### btap_df, epw_keys = process_building_files_batch(input_model.building_params_folder, input_model.start_date, input_model.end_date, span_dates)
-        if api_mode:
-            btap_df, epw_keys = process_building_files_batch(None, input_model.start_date, input_model.end_date, span_dates, building_data_dict)
-        else:
-            btap_df, epw_keys = process_building_files_batch(input_model.building_params_folder, input_model.start_date, input_model.end_date, span_dates, None)
+        btap_df, epw_keys = process_building_files_batch(input_model.building_params_folder, input_model.start_date, input_model.end_date, span_dates)
         if process_type.lower() == config.Settings().APP_CONFIG.ENERGY:
             weather_df = read_weather(epw_keys.keys())
         keys = ["Prediction Identifier", "date_int"]
@@ -1036,66 +796,7 @@ def preprocess_data(
         json.dump(data, json_output)
 
     logger.info("Preprocessing file has been saved as %s.", output_file)
-    return output_file    
-
-def main(config_file: str = typer.Argument(..., help="Location of the .yml config file (default name is input_config.yml)."),
-         process_type: str = typer.Argument(..., help="Either 'energy' or 'costing' to specify the operations to be performed."),
-         hourly_energy_electric_file: str = typer.Option("", help="Location and name of a electricity energy file to be used if the config file is not used."),
-         building_params_electric_file: str = typer.Option("", help="Location and name of a electricity building parameters file to be used if the config file is not used."),
-         val_hourly_energy_file: str = typer.Option("", help="Location and name of an energy validation file to be used if the config file is not used."),
-         val_building_params_file: str = typer.Option("", help="Location and name of a building parameters validation file to be used if the config file is not used."),
-         hourly_energy_gas_file: str = typer.Option("", help="Location and name of a gas energy file to be used if the config file is not used."),
-         building_params_gas_file: str = typer.Option("", help="Location and name of a gas building parameters file to be used if the config file is not used."),
-         output_path: str = typer.Option("", help="The output path to be used. Note that this value should be empty unless this file is called from a pipeline."),
-         preprocess_only_for_predictions: bool = typer.Option(False, help="True if the data to be preprocessed is to be used for prediction, not for training."),
-         random_seed: int = typer.Option(42, help="The random seed to be used when splitting the data."),
-         building_params_folder: str = typer.Option("", help="The folder location containing all building parameter files which will have predictions made on by the provided model. Only used preprocess_only_for_predictions is True."),
-         start_date: str = typer.Option("1-1", help="The start date to specify the start of which weather data is attached to the building data. Expects the input to be in the form Month_number-Day_number. Only used preprocess_only_for_predictions is True."),
-         end_date: str = typer.Option("12-31", help="The end date to specify the end of which weather data is attached to the building data. Expects the input to be in the form Month_number-Day_number. Only used preprocess_only_for_predictions is True."),
-         ohe_file: str = typer.Option("", help="Location and name of a ohe.pkl OneHotEncoder file which was generated in the root of a training output folder. To be used when generating a dataset to obtain predictions for."),
-         cleaned_columns_file: str = typer.Option("", help="Location and name of a cleaned_columns.json file which was generated in the root of a training output folder. To be used when generating a dataset to obtain predictions for."),
-        ):
-    """
-    Used to encode the categorical variables contained in the x_train, x_test and x_validate
-    Note that the encoded data return creates additional columns equivalent to the unique categorical values in the each categorical column.
-
-    Args:
-        config_file: Location of the .yml config file (default name is input_config.yml).
-        process_type: Either 'energy' or 'costing' to specify the operations to be performed.
-        hourly_energy_electric_file: Location and name of a electricity energy file to be used if the config file is not used.
-        building_params_electric_file: Location and name of a electricity building parameters file to be used if the config file is not used.
-        val_hourly_energy_file: Location and name of an energy validation file to be used if the config file is not used.
-        val_building_params_file: Location and name of a building parameters validation file to be used if the config file is not used.
-        hourly_energy_gas_file: Location and name of a gas energy file to be used if the config file is not used.
-        building_params_gas_file: Location and name of a gas building parameters file to be used if the config file is not used.
-        output_path: Where output data should be placed. Note that this value should be empty unless this file is called from a pipeline.
-        preprocess_only_for_predictions: True if the data to be preprocessed is to be used for prediction, not for training.
-        random_seed: The random seed to be used when splitting the data.
-        building_params_folder: The folder location containing all building parameter files which will have predictions made on by the provided model. Only used preprocess_only_for_predictions is True.
-        start_date: The start date to specify the start of which weather data is attached to the building data. Expects the input to be in the form Month_number-Day_number. Only used preprocess_only_for_predictions is True.
-        end_date: The end date to specify the end of which weather data is attached to the building data. Expects the input to be in the form Month_number-Day_number. Only used preprocess_only_for_predictions is True.
-        ohe_file: Location and name of a ohe.pkl OneHotEncoder file which was generated in the root of a training output folder. To be used when generating a dataset to obtain predictions for.
-        cleaned_columns_file: Location and name of a cleaned_columns.json file which was generated in the root of a training output folder. To be used when generating a dataset to obtain predictions for.
-    """
-    return preprocess_data(
-        config_file=config_file,
-        process_type=process_type,
-        hourly_energy_electric_file=hourly_energy_electric_file,
-        building_params_electric_file=building_params_electric_file,
-        val_hourly_energy_file=val_hourly_energy_file,
-        val_building_params_file=val_building_params_file,
-        hourly_energy_gas_file=hourly_energy_gas_file,
-        building_params_gas_file=building_params_gas_file,
-        output_path=output_path,
-        preprocess_only_for_predictions=preprocess_only_for_predictions,
-        random_seed=random_seed,
-        building_params_folder=building_params_folder,
-        start_date=start_date,
-        end_date=end_date,
-        ohe_file=ohe_file,
-        cleaned_columns_file=cleaned_columns_file
-    )
-
+    return output_file
 
 if __name__ == '__main__':
     # Load settings from the environment

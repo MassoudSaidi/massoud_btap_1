@@ -16,6 +16,8 @@ from tensorflow import keras
 import config
 import preprocessing
 from models.running_model import RunningModel
+from typing import Dict, Optional, Any
+import yaml
 
 import time
 
@@ -144,8 +146,10 @@ def run_predictions(
     building_params_folder: str = "",
     start_date: str = "",
     end_date: str = "",
-    selected_model_type: str = ""
-) -> None:
+    selected_model_type: str = "",
+    api_mode: bool = False,   # optional boolean. set true for calling from API calls
+    building_data_dict: dict = None # Dict of {'filename': pd.DataFrame}. when called from API
+) -> Optional[Dict[str, Any]]:  # Modified return type
     """
     Core processing function that works in both CLI and FastAPI.
     Put all your original main() code here.
@@ -197,22 +201,34 @@ def run_predictions(
     # Identify the training processes to be taken (energy and/or costing)
     RUNNING_PROCESSES = [config.Settings().APP_CONFIG.ENERGY,
                          config.Settings().APP_CONFIG.COSTING]
+    
+    # --- MODIFICATION START ---
+    # Dictionary to hold results for the API call
+    api_results = {}
+    
+    # For API mode, read the config file content to return it.
+    # To ensure it can be parsed by the endpoint's json.loads(), we dump it as a JSON string.
+    if api_mode:
+        try:
+            with open(DOCKER_INPUT_PATH + config_file, 'r', encoding='utf-8') as f:
+                # Load the yaml, then dump it as a valid JSON string
+                config_content = yaml.safe_load(f)
+                api_results["input_config"] = json.dumps(config_content) # Now it's a string
+        except Exception as e:
+            return {"error": f"Could not read or parse config file '{config_file}': {e}"}
 
-    # Create directory to hold all data for the run (datetime/...)
-    # If used, copy the config file within the directory to log the input values
     output_path = config.Settings().APP_CONFIG.DOCKER_OUTPUT_PATH
     output_path = Path(output_path).joinpath(settings.APP_CONFIG.RUN_BUCKET_NAME + str(datetime.now()).replace(":", "-")).joinpath(cfg.get(config.Settings().APP_CONFIG.SELECTED_MODEL_TYPE))
-    # Create the root directory in the mounted drive
-    logger.info("Creating output directory %s.", str(output_path))
-    config.create_directory(str(output_path))
 
-
-    logger.info("Massoud energy_model_file: %s", energy_model_file)
-
-    # If the config file is used, copy it into the output folder
-    logger.info("Copying config file into %s.", str(output_path))
-    if len(config_file) > 0:
-        shutil.copy(DOCKER_INPUT_PATH + config_file, str(output_path.joinpath("input_config.yml")))
+    # In non-API mode, create directories and copy the config file as before.
+    if not api_mode:
+        logger.info("Creating output directory %s.", str(output_path))
+        config.create_directory(str(output_path))
+        
+        logger.info("Copying config file into %s.", str(output_path))
+        if len(config_file) > 0:
+            shutil.copy(DOCKER_INPUT_PATH + config_file, str(output_path.joinpath("input_config.yml")))
+    # --- MODIFICATION END ---
 
     # Store the building data outside the loop such that it can be reused
     buildings_df = None
@@ -240,22 +256,41 @@ def run_predictions(
 
         # Note: To avoid changing formatting, presently the data will be saved as train/test sets, but then be combined before passed through the model
         # Preprocess the data (generates json with train, test, validate)
-        X, X_ids, all_features = preprocessing.main(config_file=input_model.config_file,
-                                                    process_type=running_process,
-                                                    hourly_energy_electric_file=None,
-                                                    building_params_electric_file=None,
-                                                    val_hourly_energy_file=None,
-                                                    val_building_params_file=None,
-                                                    hourly_energy_gas_file=None,
-                                                    building_params_gas_file=None,
-                                                    output_path=output_path,
-                                                    preprocess_only_for_predictions=True,
-                                                    building_params_folder=input_model.building_params_folder,
-                                                    random_seed=-1,
-                                                    start_date=input_model.start_date,
-                                                    end_date=input_model.end_date,
-                                                    ohe_file=input_model.ohe_file,
-                                                    cleaned_columns_file=input_model.cleaned_columns_file)
+        if api_mode:
+            X, X_ids, all_features = preprocessing.preprocess_data(config_file=input_model.config_file,
+                                                        process_type=running_process,
+                                                        hourly_energy_electric_file=None,
+                                                        building_params_electric_file=None,
+                                                        val_hourly_energy_file=None,
+                                                        val_building_params_file=None,
+                                                        hourly_energy_gas_file=None,
+                                                        building_params_gas_file=None,
+                                                        output_path=output_path,
+                                                        preprocess_only_for_predictions=True,
+                                                        building_params_folder=input_model.building_params_folder,
+                                                        random_seed=-1,
+                                                        start_date=input_model.start_date,
+                                                        end_date=input_model.end_date,
+                                                        ohe_file=input_model.ohe_file,
+                                                        cleaned_columns_file=input_model.cleaned_columns_file,
+                                                        building_data_dict=building_data_dict)
+        else:
+            X, X_ids, all_features = preprocessing.main(config_file=input_model.config_file,
+                                                        process_type=running_process,
+                                                        hourly_energy_electric_file=None,
+                                                        building_params_electric_file=None,
+                                                        val_hourly_energy_file=None,
+                                                        val_building_params_file=None,
+                                                        hourly_energy_gas_file=None,
+                                                        building_params_gas_file=None,
+                                                        output_path=output_path,
+                                                        preprocess_only_for_predictions=True,
+                                                        building_params_folder=input_model.building_params_folder,
+                                                        random_seed=-1,
+                                                        start_date=input_model.start_date,
+                                                        end_date=input_model.end_date,
+                                                        ohe_file=input_model.ohe_file,
+                                                        cleaned_columns_file=input_model.cleaned_columns_file)            
         logger.info("Updating dataset to only use selected features.")
         # Load the selected_features file
         with open(input_model.selected_features_file, 'r', encoding='UTF-8') as feature_selection_file:
@@ -324,18 +359,40 @@ def run_predictions(
             buildings_df, _ = preprocessing.process_building_files_batch(input_model.building_params_folder, "", "", running_process.lower() == config.Settings().APP_CONFIG.ENERGY)
         X_aggregated = pd.merge(X_aggregated, buildings_df, on='Prediction Identifier', how='left')
         # Output the predictions alongside any relevant information
-        logger.info("Outputting predictions to %s.", str(output_path))
-        aggregated_filename = settings.APP_CONFIG.RUNNING_COSTING_RESULTS_FILENAME
-        if running_process.lower() == config.Settings().APP_CONFIG.ENERGY:
-            aggregated_filename = settings.APP_CONFIG.RUNNING_AGGREGATED_RESULTS_FILENAME
-            X_ids.to_csv(output_path + '/' + settings.APP_CONFIG.RUNNING_DAILY_RESULTS_FILENAME)
-        X_aggregated.to_csv(output_path + '/' + aggregated_filename)
+        # --- MODIFICATION START ---
+        # If in API mode, convert dataframes to JSON and add to results dictionary.
+        # Otherwise, save to CSV as before.
+        if api_mode:
+            if running_process.lower() == config.Settings().APP_CONFIG.ENERGY:
+                logger.info("Converting energy results to JSON for API response.")
+                # --- CHANGE: Use .to_json() which correctly handles NaN -> null ---
+                api_results["energy_daily_results"] = X_ids.to_json(orient="records")
+                api_results["energy_aggregated_results"] = X_aggregated.to_json(orient="records")
+            elif running_process.lower() == config.Settings().APP_CONFIG.COSTING:
+                logger.info("Converting costing results to JSON for API response.")
+                # --- CHANGE: Use .to_json() which correctly handles NaN -> null ---
+                api_results["costing_results"] = X_aggregated.to_json(orient="records")
+        else:
+            # Original file saving logic for CLI mode
+            logger.info("Outputting predictions to %s.", str(output_path))
+            aggregated_filename = settings.APP_CONFIG.RUNNING_COSTING_RESULTS_FILENAME
+            if running_process.lower() == config.Settings().APP_CONFIG.ENERGY:
+                aggregated_filename = settings.APP_CONFIG.RUNNING_AGGREGATED_RESULTS_FILENAME
+                X_ids.to_csv(output_path + '/' + settings.APP_CONFIG.RUNNING_DAILY_RESULTS_FILENAME, index=False)
+            X_aggregated.to_csv(output_path + '/' + aggregated_filename, index=False)
+        # --- MODIFICATION END ---
 
     time_taken = (time.time() - start_time)
 
     print(time_taken)
 
-    return        
+    # --- MODIFICATION START ---
+    # Return the dictionary for API calls, otherwise return None for CLI calls
+    if api_mode:
+        return api_results
+    else:
+        return None
+    # --- MODIFICATION END ---  
 
 if __name__ == '__main__':
     # Load settings from the environment
