@@ -74,8 +74,6 @@ jobs:
             --arg COGNITO_DOMAIN "${{ secrets.COGNITO_DOMAIN }}" \
             --arg APP_BASE_URL "${{ secrets.APP_BASE_URL }}" \
             --arg VERSION_STRING "${{ secrets.VERSION_STRING }}" \
-            --arg REDIS_ENDPOINT "${{ secrets.REDIS_ENDPOINT }}" \
-            --arg REDIS_PORT "${{ secrets.REDIS_PORT }}" \
           '.taskDefinition
           | .containerDefinitions[0].image = $IMAGE_URI
           | .containerDefinitions[0].environment = [
@@ -86,9 +84,7 @@ jobs:
               {name: "COGNITO_APP_CLIENT_SECRET", value: $COGNITO_APP_CLIENT_SECRET},
               {name: "COGNITO_DOMAIN", value: $COGNITO_DOMAIN},
               {name: "APP_BASE_URL", value: $APP_BASE_URL},
-              {name: "VERSION_STRING", value: $VERSION_STRING},
-              {name: "REDIS_ENDPOINT", value: $REDIS_ENDPOINT},
-              {name: "REDIS_PORT", value: $REDIS_PORT}
+              {name: "VERSION_STRING", value: $VERSION_STRING}
             ]
           | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy, .tags)
           ' task-definition.json > new-task-definition.json
