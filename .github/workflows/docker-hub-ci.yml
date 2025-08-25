@@ -76,7 +76,7 @@ jobs:
             --arg VERSION_STRING "${{ secrets.VERSION_STRING }}" \
           '.taskDefinition
           | .containerDefinitions[0].image = $IMAGE_URI
-          | .containerDefinitions[0].environment = [
+          | .containerDefinitions[0].environment += [
               {name: "COGNITO_REGION", value: $COGNITO_REGION},
               {name: "COGNITO_USER_POOL_ID", value: $COGNITO_USER_POOL_ID},
               {name: "COGNITO_APP_CLIENT_ID", value: $COGNITO_APP_CLIENT_ID},
