@@ -317,7 +317,7 @@ async def get_current_token_311(
         auth_method=auth_method,
         token_type=token_type,
         sub=claims.get("sub"),
-        cognito_groups=claims.get("cognito:groups", ["free-tier"]),
+        cognito_groups=claims.get("cognito:groups", ["Free-Tier"]),
         email=claims.get("email"),
     )
 
