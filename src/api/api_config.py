@@ -5,13 +5,13 @@ from pydantic import BaseSettings
 
 
 class Settings(BaseSettings):
-    COGNITO_REGION: str
-    COGNITO_USER_POOL_ID: str
-    COGNITO_APP_CLIENT_ID: str
-    COGNITO_APP_PUBLIC_CLIENT_ID: str
-    COGNITO_APP_CLIENT_SECRET: str
-    COGNITO_DOMAIN: str
-    APP_BASE_URL: str
+    COGNITO_REGION: str = ""
+    COGNITO_USER_POOL_ID: str = ""
+    COGNITO_APP_CLIENT_ID: str = ""
+    COGNITO_APP_PUBLIC_CLIENT_ID: str = ""
+    COGNITO_APP_CLIENT_SECRET: str = ""
+    COGNITO_DOMAIN: str = ""
+    APP_BASE_URL: str = ""
     REDIS_ENDPOINT: str = "localhost"
     REDIS_PORT: int = 6379
     VERSION_STRING: str = ""
