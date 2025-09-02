@@ -20,6 +20,7 @@ from typing import Dict, Optional, Any
 import yaml
 
 import time
+import sys
 
 # Get a log handler
 # logs of level INFO and higher to standard output.
