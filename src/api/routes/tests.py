@@ -43,7 +43,8 @@ def get_redis(request: Request):
 
 @router.get("/test")
 def test_endpoint():
-    return {"message": "Test OK"}
+    logger.info(f"Test endpoint")
+    return {"message": "Test OK with logging"}
 
 @router.get("/protected", response_model=dict)
 async def protected_route(token_info: TokenInfo = Depends(get_current_token)):
