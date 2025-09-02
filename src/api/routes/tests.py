@@ -20,7 +20,19 @@ from ..api_config import settings
 # from ..redis_client import redis_client
 
 
-logging.basicConfig(level=logging.INFO)
+# logs of level INFO and higher to standard output.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        # If you want to log to a file as well, you can add a FileHandler here
+        # logging.FileHandler("debug.log"),
+        
+        # This handler sends logs to the console
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
