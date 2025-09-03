@@ -21,6 +21,7 @@ import yaml
 
 import time
 import sys
+import psutil
 
 # Get a log handler
 # logs of level INFO and higher to standard output.
@@ -38,6 +39,12 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+def log_memory_usage(stage: str):
+    process = psutil.Process()
+    mem_info = process.memory_info()
+    mem_mb = mem_info.rss / 1_000_000  # in MB
+    mem_gb = mem_mb / 1024
+    logger.info(f"Memory usage ({stage}): {mem_mb:.1f} MB ({mem_gb:.2f} GB)")
 
 
 def initialize_run_process(docker_input_path, config_file, model_file, ohe_file, cleaned_columns_file,
@@ -319,10 +326,13 @@ def run_predictions(
         X = scaler_X.transform(X_df)
         logger.info("Loading the specified keras model.")
         # Load the keras model
+        log_memory_usage("BSUP report, Before loading model")
         if selected_model_type.lower() == config.Settings().APP_CONFIG.MULTILAYER_PERCEPTRON:
             model = keras.models.load_model(input_model.model_file, compile=False)
         else:
             model = joblib.load(input_model.model_file)
+
+        log_memory_usage("BSUP report, After loading model")
 
         logger.info("Getting the predictions for the input data.")
 
