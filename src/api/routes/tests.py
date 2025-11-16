@@ -18,7 +18,7 @@ from redis import exceptions as redis_exceptions
 from ..auth.dependency_functions import get_current_user
 from ..api_config import settings
 import sys
-# from ..redis_client import redis_client
+from ..redis_client import redis_client
 
 
 # logs of level INFO and higher to standard output.
