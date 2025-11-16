@@ -19,6 +19,9 @@ from ..auth.dependency_functions import get_current_user
 from ..api_config import settings
 import sys
 # from ..redis_client import redis_client
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
+import uuid
 
 
 # logs of level INFO and higher to standard output.
@@ -37,6 +40,35 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+s3 = boto3.client("s3")
+BUCKET_NAME = "btap-app-test3-dev-tgw-3-btap-v1-uploads"   # replace with terraform output if needed
+
+@router.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    try:
+        # Generate unique object name
+        object_key = f"uploads/{uuid.uuid4()}_{file.filename}"
+
+        # Read file content into memory
+        content = await file.read()
+
+        # Upload to S3
+        s3.put_object(
+            Bucket=BUCKET_NAME,
+            Key=object_key,
+            Body=content
+        )
+
+        return {
+            "status": "success",
+            "file_name": file.filename,
+            "s3_key": object_key
+        }
+
+    except (BotoCoreError, ClientError) as e:
+        raise HTTPException(status_code=500, detail=f"S3 upload error: {str(e)}")
+
 
 def get_redis(request: Request):
     """Dependency that provides the Redis client."""
