@@ -25,7 +25,7 @@ from typing import Optional, Dict, Any, List
 from .routes import auth, tests, maintenance, surrogate_model
 from .auth.cognito import get_cognito_login_url
 from .auth.dependency_functions import get_current_user, get_current_token, get_api_user
-from .redis_client import redis_client
+# from .redis_client import redis_client
 from .redis_client import init_redis, close_redis
 import os
 

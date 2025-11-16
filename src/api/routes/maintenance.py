@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 import re
-from ..redis_client import redis_client
+# from ..redis_client import redis_client
 
 from ..auth.dependency_functions import admin_required
 
