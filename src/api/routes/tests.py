@@ -49,6 +49,7 @@ async def upload_file(file: UploadFile = File(...)):
     try:
         # Generate unique object name
         object_key = f"uploads/{uuid.uuid4()}_{file.filename}"
+        # object_key = f"uploads/1_{file.filename}"
 
         # Read file content into memory
         content = await file.read()
@@ -68,6 +69,28 @@ async def upload_file(file: UploadFile = File(...)):
 
     except (BotoCoreError, ClientError) as e:
         raise HTTPException(status_code=500, detail=f"S3 upload error: {str(e)}")
+
+
+@router.get("/test-upload-list")
+async def test_upload_list():
+    try:
+        response = s3.list_objects_v2(
+            Bucket=BUCKET_NAME,
+            Prefix="uploads/"
+        )
+
+        if "Contents" not in response:
+            return {"status": "empty", "files": []}
+
+        files = [obj["Key"] for obj in response["Contents"]]
+
+        return {
+            "status": "ok",
+            "files": files
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 def get_redis(request: Request):
