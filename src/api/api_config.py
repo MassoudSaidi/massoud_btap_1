@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     REDIS_ENDPOINT: str = "localhost"
     REDIS_PORT: int = 6379
     VERSION_STRING: str = ""
+    BUCKET_NAME: str = ""
 
     @property
     def COGNITO_ISSUER(self) -> str:

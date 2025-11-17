@@ -1,6 +1,6 @@
 # routes/test.py
 import os
-from fastapi import APIRouter, BackgroundTasks, Response, HTTPException, Header, Depends
+from fastapi import APIRouter, BackgroundTasks, Response, HTTPException, Header, Depends, Query
 from ..auth.dependency_functions import get_current_token, require_user, TokenInfo
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi import FastAPI, UploadFile, File
@@ -18,10 +18,10 @@ from redis import exceptions as redis_exceptions
 from ..auth.dependency_functions import get_current_user
 from ..api_config import settings
 import sys
-# from ..redis_client import redis_client
+
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
-import uuid
+
 
 
 # logs of level INFO and higher to standard output.
@@ -42,19 +42,28 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 s3 = boto3.client("s3")
-BUCKET_NAME = "btap-app-test3-dev-tgw-3-btap-v1-uploads"   # replace with terraform output if needed
+BUCKET_NAME = settings.BUCKET_NAME
 
 @router.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(
+    file: UploadFile = File(...),
+    email: Optional[str] = Query(None, description="Optional user email address")
+):
     try:
-        # Generate unique object name
-        object_key = f"uploads/{uuid.uuid4()}_{file.filename}"
-        # object_key = f"uploads/1_{file.filename}"
+        if email:
+            # Sanitize email: lowercase, replace non-alphanumeric with '_', remove leading/trailing '_'
+            sanitized_email = ''.join(c if c.isalnum() else '_' for c in email.lower()).strip('_')
+            prefix = sanitized_email if sanitized_email else "general"  # Fallback if sanitization empties it
+        else:
+            prefix = "general"
+
+        # Generate object key (overwrites if exists)
+        object_key = f"uploads/{prefix}_{file.filename}"
 
         # Read file content into memory
         content = await file.read()
 
-        # Upload to S3
+        # Upload to S3 (put_object overwrites existing keys by default)
         s3.put_object(
             Bucket=BUCKET_NAME,
             Key=object_key,
