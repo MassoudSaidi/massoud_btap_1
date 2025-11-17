@@ -1,6 +1,6 @@
 # routes/test.py
 import os
-from fastapi import APIRouter, BackgroundTasks, Response, HTTPException, Header, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Response, HTTPException, Header, Depends
 from ..auth.dependency_functions import get_current_token, require_user, TokenInfo
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi import FastAPI, UploadFile, File
@@ -43,41 +43,6 @@ router = APIRouter()
 
 s3 = boto3.client("s3")
 BUCKET_NAME = settings.BUCKET_NAME
-
-@router.post("/upload")
-async def upload_file(
-    file: UploadFile = File(...),
-    email: Optional[str] = Query(None, description="Optional user email address")
-):
-    try:
-        if email:
-            # Sanitize email: lowercase, replace non-alphanumeric with '_', remove leading/trailing '_'
-            sanitized_email = ''.join(c if c.isalnum() else '_' for c in email.lower()).strip('_')
-            prefix = sanitized_email if sanitized_email else "general"  # Fallback if sanitization empties it
-        else:
-            prefix = "general"
-
-        # Generate object key (overwrites if exists)
-        object_key = f"uploads/{prefix}_{file.filename}"
-
-        # Read file content into memory
-        content = await file.read()
-
-        # Upload to S3 (put_object overwrites existing keys by default)
-        s3.put_object(
-            Bucket=BUCKET_NAME,
-            Key=object_key,
-            Body=content
-        )
-
-        return {
-            "status": "success",
-            "file_name": file.filename,
-            "s3_key": object_key
-        }
-
-    except (BotoCoreError, ClientError) as e:
-        raise HTTPException(status_code=500, detail=f"S3 upload error: {str(e)}")
 
 
 @router.get("/test-upload-list")
