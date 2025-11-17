@@ -155,7 +155,7 @@ async def down_result(
         sanitized = sanitized_email if sanitized_email else "general"  # Fallback if sanitization empties it
 
     # Define the S3 key for the result JSON
-    output_key = f"results/{sanitized}_output.json"
+    output_key = f"uploads/{sanitized}_output.json"
 
     # Download from S3
     try:
