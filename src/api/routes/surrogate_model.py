@@ -191,7 +191,11 @@ async def run_task(
         
     # --- Check Layer 1: Manual Request Limit (The Shield) ---
     try:
-        limit, window = REQUEST_LIMIT_CONFIG[x_user_role]
+        request_limit_config = REQUEST_LIMIT_CONFIG[x_user_role]
+
+        # limit, window = REQUEST_LIMIT_CONFIG[x_user_role]
+        limit = request_limit_config.requests
+        window = request_limit_config.window_seconds        
         
         # Create a key that is unique for the user AND the current time window
         current_timestamp = int(time.time())
