@@ -8,6 +8,7 @@ from fastapi.openapi.models import OAuthFlowAuthorizationCode
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi import FastAPI, Request, Response, HTTPException, status, Depends, Form
+from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
 
 
 from jose import jwt, jwk
@@ -25,7 +26,6 @@ from typing import Optional, Dict, Any, List
 from .routes import auth, tests, maintenance, surrogate_model
 from .auth.cognito import get_cognito_login_url
 from .auth.dependency_functions import get_current_user, get_current_token, get_api_user
-# from .redis_client import redis_client
 from .redis_client import init_redis, close_redis
 import os
 
@@ -64,6 +64,8 @@ app = FastAPI(
         "usePkceWithAuthorizationCodeGrant": True,
     }
 )
+
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
