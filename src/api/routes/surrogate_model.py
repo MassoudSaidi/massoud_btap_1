@@ -16,6 +16,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from ..auth.dependency_functions import get_current_user
 from redis import exceptions as redis_exceptions
+from redis.exceptions import ConnectionError as RedisConnectionError, TimeoutError as RedisTimeoutError
 import logging
 import sys
 
@@ -171,7 +172,7 @@ async def run_model_endpoint_s3(
 @router.post("/run-model-s3-rate-limited")
 async def run_task(
     claims: dict = Depends(get_current_user),
-    redis_client: redis.Redis = Depends(get_redis),
+    redis_client = Depends(get_redis),
     config_file: str = Form(..., description="Configuration file name for the ML model")
 ):
     
