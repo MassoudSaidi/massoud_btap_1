@@ -8,7 +8,6 @@ from fastapi.openapi.models import OAuthFlowAuthorizationCode
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi import FastAPI, Request, Response, HTTPException, status, Depends, Form
-from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
 
 
 from jose import jwt, jwk
