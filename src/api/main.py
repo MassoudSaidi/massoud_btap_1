@@ -64,8 +64,6 @@ app = FastAPI(
     }
 )
 
-app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
-
 
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "static"))
