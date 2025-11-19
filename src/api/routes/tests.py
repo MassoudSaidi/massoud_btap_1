@@ -233,8 +233,8 @@ async def is_redis_available(redis) -> bool:
 @router.post("/rate-limited-task-simple/")
 async def run_task_simple(
     background_tasks: BackgroundTasks,
-    x_user_id: str = Header(...),
-    x_user_role: str = Header("Free-Tier"),
+    x_user_id: str = Header(..., alias="X-User-Id"),
+    x_user_role: str = Header("Free-Tier", alias="X-User-Role"),
     redis_client = Depends(get_redis)  # inject redis
 ):
     if not await is_redis_available(redis_client):

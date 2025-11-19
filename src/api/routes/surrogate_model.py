@@ -176,7 +176,8 @@ async def run_task(
 ):
     
     x_user_id = claims["sub"]    
-    x_user_role = claims.get("cognito:groups", ["free-tier"])[0].lower()
+    # x_user_role = claims.get("cognito:groups", ["free-tier"])[0].lower()
+    x_user_role = claims.get("cognito:groups", ["Free-Tier"])[0]
 
     # If Redis is down entirely, we cannot do anything.
     if not await is_redis_available(redis_client):
