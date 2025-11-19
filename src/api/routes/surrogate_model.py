@@ -171,15 +171,13 @@ async def run_model_endpoint_s3(
 @router.post("/run-model-s3-rate-limited")
 async def run_task(
     claims: dict = Depends(get_current_user),
-    redis_client = Depends(get_redis),
+    redis_client: redis.Redis = Depends(get_redis),
     config_file: str = Form(..., description="Configuration file name for the ML model")
 ):
     
     x_user_id = claims["sub"]    
-    # x_user_role = claims.get("cognito:groups", ["free-tier"])[0].lower()
     x_user_role = claims.get("cognito:groups", ["Free-Tier"])[0]
 
-    # If Redis is down entirely, we cannot do anything.
     if not await is_redis_available(redis_client):
         return JSONResponse(
             status_code=503,
@@ -192,49 +190,52 @@ async def run_task(
     # --- Check Layer 1: Manual Request Limit (The Shield) ---
     try:
         request_limit_config = REQUEST_LIMIT_CONFIG[x_user_role]
-
-        # limit, window = REQUEST_LIMIT_CONFIG[x_user_role]
         limit = request_limit_config.requests
         window = request_limit_config.window_seconds        
         
-        # Create a key that is unique for the user AND the current time window
         current_timestamp = int(time.time())
         window_start_timestamp = int(current_timestamp / window) * window
         request_limit_key = f"requests:{x_user_role}:{x_user_id}:{window_start_timestamp}"
         
-        # Use a pipeline to make the INCR and EXPIRE atomic
         pipe = redis_client.pipeline()
         pipe.incr(request_limit_key)
         pipe.expire(request_limit_key, time=window)
         results = await pipe.execute()
-        
         current_hits = results[0]
 
         if current_hits > limit:
             logger.warning(f"Request limit shield hit for user {x_user_id}. Hits: {current_hits}, Limit: {limit}.")
-            # Calculate remaining time in window for a more accurate Retry-After
             retry_after = window - (current_timestamp - window_start_timestamp)
-            return JSONResponse(status_code=429, content={"detail": "API request rate limit exceeded."}, headers={"Retry-After": str(retry_after)})
+            return JSONResponse(
+                status_code=429, 
+                content={"detail": "API request rate limit exceeded."}, 
+                headers={"Retry-After": str(retry_after)}
+            )
             
         logger.info(f"Request limit check passed for {x_user_id}.")
 
-    except (redis_exceptions.ConnectionError, redis_exceptions.TimeoutError):
+    except (RedisConnectionError, RedisTimeoutError):
         return JSONResponse(status_code=503, content={"detail": "Rate limiting service unavailable. Please try again later."})
 
     # --- Check Layer 2: Concurrency Limit (The Gatekeeper) ---
     concurrency_key = f"active_tasks:{x_user_id}"
-    max_concurrency = CONCURRENCY_QUOTAS[x_user_role]
+    max_concurrency_config = CONCURRENCY_QUOTAS[x_user_role]
+    max_concurrency_limit = max_concurrency_config.max_concurrent
     
     current_count = await redis_client.incr(concurrency_key)
     
+    # *** FIX: Use a try/finally block to guarantee the counter is decremented ***
     try:
-        if current_count > max_concurrency:
-            logger.warning(f"Concurrency limit gatekeeper hit for user {x_user_id}. Has {current_count} active tasks, limit is {max_concurrency}.")
-            await redis_client.decr(concurrency_key) # Revert the increment
+        if current_count > max_concurrency_limit:
+            # IMPROVEMENT: Log the numeric limit for clarity
+            logger.warning(f"Concurrency limit hit for user {x_user_id}. Active tasks: {current_count}, Limit: {max_concurrency_limit}.")
+            # The decrement is now in the finally block, but we must do it here too before exiting early.
+            await redis_client.decr(concurrency_key) 
             return JSONResponse(status_code=429, content={"detail": "You already have the maximum number of active tasks running."})
         
-        logger.info(f"Concurrency check passed for user {x_user_id}. Starting task {current_count}/{max_concurrency}.")        
-        # await task_wrapper(user_id=x_user_id, role=x_user_role, redis_client=redis_client)
+        # IMPROVEMENT: Log the numeric limit for clarity
+        logger.info(f"Concurrency check passed for user {x_user_id}. Starting task {current_count}/{max_concurrency_limit}.")        
+        
         await process_user_model(
             user_email=claims.get("email", None),
             user_id=x_user_id,
@@ -244,10 +245,12 @@ async def run_task(
         )        
         return {"status": "Task accepted and Finished."}
         
-    except Exception as e:
-        logger.error(f"An unexpected error occurred after incrementing concurrency counter: {e}. Reverting.")
-        await redis_client.decr(concurrency_key)
-        raise            
+    finally:
+        # This will ALWAYS run, whether the task succeeds or fails, releasing the slot.
+        # But we should not decrement if the check failed in the first place.
+        if current_count <= max_concurrency_limit:
+            logger.info(f"Task finished for {x_user_id}. Decrementing concurrency counter.")
+            await redis_client.decr(concurrency_key)     
     
 
 @router.post("/download-result")
