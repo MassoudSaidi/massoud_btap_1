@@ -4,6 +4,7 @@ run-name: Deploy ${{ github.ref_name }}
 on:
   # This workflow will ONLY run when a tag is pushed.
   # Pull requests are handled by a separate, simpler workflow if needed.
+  workflow_dispatch:
   push:
     tags:
       - 'v*.*.*' # Recommended: Use a 'v' prefix for version tags, e.g., v1.2.0
