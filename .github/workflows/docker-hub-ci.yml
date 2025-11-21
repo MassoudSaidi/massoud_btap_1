@@ -1,5 +1,5 @@
 name: Docker Hub CI and Deploy on Release
-run-name: Deploy ${{ github.ref_name }}
+run-name: Deploy ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
 
 on:
   # This workflow will ONLY run when a tag is pushed.
@@ -55,16 +55,14 @@ jobs:
 
       - name: Deploy to Amazon ECS
         run: |
-          # Set your variables
-          # CLUSTER_NAME="btap-app4-dev-cluster"
-          # SERVICE_NAME="btap-app4-dev-service"
-          # TASK_FAMILY="btap-app4-dev-task"
+          # Set variables
           CLUSTER_NAME=${{ secrets.ECS_CLUSTER_NAME }}
           SERVICE_NAME=${{ secrets.ECS_SERVICE_NAME }}
           TASK_FAMILY=${{ secrets.ECS_TASK_FAMILY }}      
 
-          # This directly and reliably gets the tag that triggered the workflow (e.g., "1.1.4")
-          NEW_IMAGE_URI="${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ github.ref_name }}"
+          # This directly gets the tag that triggered the workflow (e.g., "1.1.4")
+          # NEW_IMAGE_URI="${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ github.ref_name }}"
+          NEW_IMAGE_URI="${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ github.ref_name || inputs.version }}""
 
           echo "Deploying new image to ECS: $NEW_IMAGE_URI"
           
