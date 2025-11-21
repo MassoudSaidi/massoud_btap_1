@@ -65,6 +65,17 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Determine Docker tag
+        id: tag
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "value=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            # Strip leading 'v' if you prefer clean semver tags (optional)
+            TAG=${{ github.ref_name }}
+            echo "value=${TAG#v}" >> $GITHUB_OUTPUT
+          fi            
+
       - name: Deploy to Amazon ECS
         run: |
           # Set variables
@@ -74,7 +85,7 @@ jobs:
 
           # This directly gets the tag that triggered the workflow (e.g., "1.1.4")
           # NEW_IMAGE_URI="$ {{ secrets.DOCKER_USERNAME }}/$ {{ github.event.repository.name }}:$ {{ github.ref_name }}"
-          NEW_IMAGE_URI="${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ github.ref_name || inputs.version }}"
+          NEW_IMAGE_URI="${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ steps.tag.outputs.value }}"
 
           echo "Deploying new image to ECS: $NEW_IMAGE_URI"
           
