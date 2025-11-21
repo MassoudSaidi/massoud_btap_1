@@ -1,4 +1,4 @@
-name: Docker Hub CI and Deploy on Release
+name: Docker Hub CI and Deploy to ECS on Release
 run-name: Deploy ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
 
 on:

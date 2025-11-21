@@ -1,4 +1,4 @@
-name: Docker Hub CI on Release
+name: Build and deploy to Docker Hub
 run-name: Build and Push ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
 
 on:
@@ -9,10 +9,6 @@ on:
       version:
         description: "Docker tag / Release version (e.g. v1.2.3)"
         required: true    
-  push:
-    tags:
-      - 'v*.*.*' # Recommended: Use a 'v' prefix for version tags, e.g., v1.2.0
-      - '*.*.*'  # Also supports tags without a 'v', e.g., 1.2.0
 
 jobs:
   build-and-push: # Renamed for clarity
