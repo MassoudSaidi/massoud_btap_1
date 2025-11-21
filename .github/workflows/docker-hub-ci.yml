@@ -62,7 +62,7 @@ jobs:
 
           # This directly gets the tag that triggered the workflow (e.g., "1.1.4")
           # NEW_IMAGE_URI="${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ github.ref_name }}"
-          NEW_IMAGE_URI="${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ github.ref_name || inputs.version }}""
+          NEW_IMAGE_URI="${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}:${{ github.ref_name || inputs.version }}"
 
           echo "Deploying new image to ECS: $NEW_IMAGE_URI"
           
